@@ -8,32 +8,148 @@ datasource db {
 }
 
 model User {
-  id      String  @id @default(cuid())
-  // Crystal balance (1 crystal = 1 USD).
-  crystals Decimal @default(0)
+  id        String   @id @default(cuid())
+  username  String   @unique
+  role      UserRole @default(USER)
+  // Crystal balance (1 crystal = 1 USD)
+  crystals  Decimal  @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  inventory InventoryItem[]
+  inventory    InventoryItem[]
   transactions Transaction[]
   caseOpenings CaseOpening[]
 
   @@map("users")
 }
 
-model Case {
-  id String @id @default(cuid())
-  name String
-  description String?
-  // Price in crystals.
-  price Decimal @default(0)
-  // Image URL to display in the frontend.
-  image String?
-  createdAt DateTime @default(now())
+enum UserRole {
+  ADMIN
+  MODERATOR
+  USER
+}
 
-  items CaseItem[]
+model Case {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  // Price in crystals
+  price       Decimal @default(0)
+  // Image URL to display in the frontend
+  image       String?
+  // Inactive cases cannot be opened
+  active Boolean @default(true)
+
+  // { caseItemId, dropChance }
+  items Json
 
   @@map("cases")
 }
 
+model CaseItem {
+  id     String     @id @default(cuid())
+  name   String
+  rarity ItemRarity
+  condition ItemCondition
+  image  String
+  // Price in crystals
+  price  Decimal    @default(0)
 
+  @@map("case_items")
+}
+
+model InventoryItem {
+  id     String     @id @default(cuid())
+  userId String
+  itemId String
+  // Amount of the item in the inventory
+  amount Decimal @default(1)
+
+  user   User @relation(fields: [userId], references: [id])
+  item   CaseItem @relation(fields: [itemId], references: [id])
+
+  @@map("inventory_items")
+}
+
+// CS2-based item rarities (or 'weapon quality')
+enum ItemRarity {
+  CONSUMER
+  INDUSTRIAL
+  MIL_SPEC
+  RESTRICTED
+  CLASSIFIED
+  COVERT
+  CONTRABAND
+}
+
+// CS2-based item conditions
+enum ItemCondition {
+  BATTLE_SCARRED
+  WELL_WORN
+  FIELD_TESTED
+  MINIMAL_WEAR
+  FACTORY_NEW
+  // Specific knives and other items that have no condition (i.e. vanilla)
+  NO_CONDITION
+}
+
+model CaseOpening {
+  id             String   @id @default(cuid())
+  userId         String
+  caseId         String
+  // ID of the item obtained in this opening
+  obtainedItemId String
+  // Cost of this opening in crystals
+  cost           Decimal  @default(0)
+  openedAt       DateTime @default(now())
+
+  user         User @relation(fields: [userId], references: [id])
+  case         Case @relation(fields: [caseId], references: [id])
+  obtainedItem CaseItem @relation(fields: [obtainedItemId], references: [id])
+
+  @@map("case_openings")
+}
+
+// Refers to transactions done by the user
+model Transaction {
+  id String    @id @default(cuid())
+  userId String
+  type TransactionType
+  amount      Decimal
+  status      TransactionStatus @default(PENDING)
+  // Payment processor reference
+  reference   String?           
+  createdAt   DateTime          @default(now())
+  completedAt DateTime?
+
+  User @relation(fields: [userId], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  CASE_OPENING
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model AdminLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String
+  // What was acted upon
+  target      String?
+  // Additional context
+  details     Json?
+  timestamp   DateTime @default(now())
+  
+  @@map("admin_logs")
+}
