@@ -1,16 +1,36 @@
-import { createServer } from 'http';
-import { Server as SocketServer } from 'socket.io';
 import app from './app';
+import { connectDatabase, disconnectDatabase } from './config/database';
 
-const server = createServer(app);
-const io = new SocketServer(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000'
+const PORT = process.env.PORT || 8080;
+
+/** Starts the server instance. */
+const startServer = async () => {
+  try {
+    // Connect to database
+    await connectDatabase();
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
+}
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  await disconnectDatabase();
+  process.exit(0);
 });
 
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  await disconnectDatabase();
+  process.exit(0);
 });
+
+startServer();
