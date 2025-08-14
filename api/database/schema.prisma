@@ -16,6 +16,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /** RELATION FIELDS */
   inventory    InventoryItem[]
   transactions Transaction[]
   caseOpenings CaseOpening[]
@@ -39,9 +40,12 @@ model Case {
   image       String?
   // Inactive cases cannot be opened
   active Boolean @default(true)
-
+  // Items available to be obtained from this case
   // { caseItemId, dropChance }
   items Json
+
+  /** RELATION FIELDS */
+  caseOpenings CaseOpening[]
 
   @@map("cases")
 }
@@ -55,6 +59,10 @@ model CaseItem {
   // Price in crystals
   price  Decimal    @default(0)
 
+  /** RELATION FIELDS */
+  inventoryItems InventoryItem[]
+  caseOpenings CaseOpening[]
+  
   @@map("case_items")
 }
 
@@ -65,8 +73,9 @@ model InventoryItem {
   // Amount of the item in the inventory
   amount Decimal @default(1)
 
+  /** RELATION FIELDS */
   user   User @relation(fields: [userId], references: [id])
-  item   CaseItem @relation(fields: [itemId], references: [id])
+  caseItem   CaseItem @relation(fields: [itemId], references: [id])
 
   @@map("inventory_items")
 }
@@ -103,6 +112,7 @@ model CaseOpening {
   cost           Decimal  @default(0)
   openedAt       DateTime @default(now())
 
+  /** RELATION FIELDS */
   user         User @relation(fields: [userId], references: [id])
   case         Case @relation(fields: [caseId], references: [id])
   obtainedItem CaseItem @relation(fields: [obtainedItemId], references: [id])
@@ -122,7 +132,8 @@ model Transaction {
   createdAt   DateTime          @default(now())
   completedAt DateTime?
 
-  User @relation(fields: [userId], references: [id])
+  /** RELATION FIELDS */
+  user User @relation(fields: [userId], references: [id])
 
   @@map("transactions")
 }
